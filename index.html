@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>STSE Marksheet Portal</title>
+  <!-- Tailwind & Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <!-- SweetAlert for alerts -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <style>
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in {
+      animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .input-glow:focus {
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+    }
+    .print-header,
+    .student-info-print,
+    .result-declaration,
+    .print-notes {
+      display: none;
+    }
+
+    /* ----------------------------------------------------------
+       Print-Specific CSS
+    ---------------------------------------------------------- */
+    @page {
+      size: A4;
+      margin: 20mm;
+    }
+    @media print {
+      /* Basic body reset */
+      body {
+        background: none !important;
+        font-size: 12pt;
+        margin: 0;
+        padding: 0;
+      }
+      .print-container {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        box-shadow: none;
+      }
+
+      /* Show the special print header */
+      .print-header {
+        display: block !important;
+        text-align: center;
+        margin-bottom: 1.5cm;
+        border-bottom: 3px solid #000;
+        padding-bottom: 0.5cm;
+      }
+      .print-header h2 {
+        font-size: 18pt;
+        margin: 0;
+        color: #000 !important;
+      }
+      .print-header p {
+        font-size: 14pt;
+        margin: 5px 0;
+        color: #000 !important;
+      }
+
+      /* Student Info in a nice box for print */
+      .student-info-print {
+        display: block !important;
+        margin: 1cm 0;
+        border: 2px solid #000;
+        padding: 0.5cm;
+      }
+      .student-info-print div {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5cm;
+      }
+      .student-info-print p {
+        margin: 5px 0;
+        font-size: 12pt;
+      }
+      .student-info-print .label {
+        font-weight: bold;
+        color: #000 !important;
+      }
+
+      /* Marks table styling for print */
+      .print-table {
+        width: 100% !important;
+        border: 2px solid #000 !important;
+        border-collapse: collapse;
+        margin: 1cm 0;
+      }
+      .print-table th {
+        background: #fff !important;
+        color: #000 !important;
+        border: 1px solid #000 !important;
+        padding: 8pt;
+        font-weight: bold;
+      }
+      .print-table td {
+        border: 1px solid #000 !important;
+        padding: 8pt;
+        text-align: center;
+      }
+      .print-table .total-row {
+        font-weight: bold;
+        border-top: 2px solid #000 !important;
+      }
+
+      /* Result declaration + signature line */
+      .result-declaration {
+        display: block !important;
+        margin-top: 1cm;
+        border-top: 2px solid #000;
+        padding-top: 0.5cm;
+      }
+      .signature-line {
+        margin-top: 2cm;
+        border-top: 1px solid #000;
+        width: 60%;
+        float: right;
+        text-align: center;
+        padding-top: 0.5cm;
+      }
+
+      /* Notes at the bottom of printed page */
+      .print-notes {
+        display: block !important;
+        margin-top: 1cm;
+        font-size: 10pt;
+        color: #000 !important;
+      }
+
+      /* Hide interactive elements + icons on print */
+      .no-print,
+      .fa-solid,
+      .fa-regular,
+      .fa-search {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+
+<body class="min-h-screen p-4 flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl print-container">
+    
+    <!-- (1) Search Section (Visible on screen; hidden on print) -->
+    <div class="flex justify-center py-8 no-print">
+      <div class="relative group">
+        <img 
+          src="https://cdn.bio.link/uploads/profile_pictures/2025-03-06/jOi36H0WMovo35xDjdVDqaaBZEk7g0xl.png" 
+          alt="Logo"
+          class="w-28 h-28 rounded-full border-[3px] border-blue-100 shadow-lg transition-transform duration-300 group-hover:scale-105" />
+      </div>
+    </div>
+
+    <div class="px-8 pb-8 no-print">
+      <div class="space-y-4">
+        <div class="text-center mb-6">
+          <h1 class="text-3xl font-bold text-gray-800 mb-2">Student Marksheet Portal</h1>
+          <p class="text-gray-600">Enter your examination seat number to view results</p>
+        </div>
+        
+        <div class="relative">
+          <div class="flex items-center bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow">
+            <input 
+              type="text"
+              id="seatNo"
+              placeholder=" "
+              autocomplete="off"
+              class="w-full px-5 py-4 text-lg border-0 rounded-xl input-glow focus:ring-0 peer"
+              onkeypress="return event.charCode >= 48 && event.charCode <= 57"
+            />
+            <label 
+              for="seatNo" 
+              class="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none transition-all 
+                     peer-placeholder-shown:text-lg peer-placeholder-shown:top-1/2 peer-focus:-top-2 peer-focus:text-sm 
+                     peer-focus:text-blue-600 bg-white px-2">
+              Seat Number
+            </label>
+            <button 
+              onclick="fetchData()"
+              class="m-2 px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 
+                     text-white rounded-xl transition-all flex items-center gap-3 group"
+            >
+              <span class="group-hover:scale-110 transition-transform">Search</span>
+              <i class="fas fa-search group-hover:animate-bounce"></i>
+            </button>
+          </div>
+          <p class="mt-2 text-sm text-gray-500">Example: 123456</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- (2) Results Container -->
+    <div id="resultContainer" class="hidden fade-in px-8 pb-8">
+      
+      <!-- (a) Print Header (hidden on screen, displayed in print) -->
+      <div class="print-header">
+        <h2>SINDHUDURG TALENT SEARCH EXAM 2024-25</h2>
+        <p>OFFICIAL MARKSHEET</p>
+        <p>Result Certificate</p>
+      </div>
+
+      <!-- (b) Student Info for Print -->
+      <div class="student-info-print">
+        <div>
+          <div>
+            <p class="label">Student Name:</p>
+            <p id="printStudentName"></p>
+
+            <p class="label">Seat Number:</p>
+            <p id="printSeatNo"></p>
+
+            <p class="label">Standard:</p>
+            <p id="printStd"></p>
+          </div>
+          <div>
+            <p class="label">School:</p>
+            <p id="printSchool"></p>
+
+            <p class="label">Center:</p>
+            <p id="printCenter"></p>
+
+            <p class="label">District:</p>
+            <p id="printDistrict"></p>
+          </div>
+        </div>
+      </div>
+      <div class="no-print">
+        <!-- Title on screen -->
+        <div class="text-center mb-8 space-y-4">
+          <div class="inline-block bg-blue-100 px-6 py-2 rounded-full">
+            <h3 class="text-xl font-bold text-blue-800">MRI TALENT SEARCH EXAM 2024-25</h3>
+          </div>
+          <div class="flex items-center justify-center gap-4">
+            <div class="h-px bg-gray-200 flex-1"></div>
+            <span class="text-gray-500">OFFICIAL MARKSHEET</span>
+            <div class="h-px bg-gray-200 flex-1"></div>
+          </div>
+        </div>
+
+        <!-- On-screen student info -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Student Name -->
+            <div class="flex items-center space-x-4 p-3 hover:bg-gray-50 rounded-lg">
+              <i class="fas fa-user text-blue-600 w-6"></i>
+              <div>
+                <p class="text-sm text-gray-500">Student Name</p>
+                <p id="studentName" class="font-semibold text-gray-800"></p>
+              </div>
+            </div>
+            
+            <!-- Seat Number -->
+            <div class="flex items-center space-x-4 p-3 hover:bg-gray-50 rounded-lg">
+              <i class="fas fa-ticket text-blue-600 w-6"></i>
+              <div>
+                <p class="text-sm text-gray-500">Seat Number</p>
+                <p id="seatNoDisplay" class="font-semibold text-gray-800"></p>
+              </div>
+            </div>
+
+            <!-- Standard -->
+            <div class="flex items-center space-x-4 p-3 hover:bg-gray-50 rounded-lg">
+              <i class="fas fa-graduation-cap text-blue-600 w-6"></i>
+              <div>
+                <p class="text-sm text-gray-500">Standard</p>
+                <p id="std" class="font-semibold text-gray-800"></p>
+              </div>
+            </div>
+
+            <!-- Exam Date -->
+            <div class="flex items-center space-x-4 p-3 hover:bg-gray-50 rounded-lg">
+              <i class="fas fa-calendar-day text-blue-600 w-6"></i>
+              <div>
+                <p class="text-sm text-gray-500">Exam Date</p>
+                <p id="examDate" class="font-semibold text-gray-800"></p>
+              </div>
+            </div>
+
+            <!-- School -->
+            <div class="flex items-center space-x-4 p-3 hover:bg-gray-50 rounded-lg">
+              <i class="fas fa-school text-blue-600 w-6"></i>
+              <div>
+                <p class="text-sm text-gray-500">School</p>
+                <p id="school" class="font-semibold text-gray-800"></p>
+              </div>
+            </div>
+
+            <!-- Center -->
+            <div class="flex items-center space-x-4 p-3 hover:bg-gray-50 rounded-lg">
+              <i class="fas fa-building text-blue-600 w-6"></i>
+              <div>
+                <p class="text-sm text-gray-500">Center</p>
+                <p id="center" class="font-semibold text-gray-800"></p>
+              </div>
+            </div>
+
+            <!-- District -->
+            <div class="flex items-center space-x-4 p-3 hover:bg-gray-50 rounded-lg">
+              <i class="fas fa-location-dot text-blue-600 w-6"></i>
+              <div>
+                <p class="text-sm text-gray-500">District</p>
+                <p id="district" class="font-semibold text-gray-800"></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- (d) Marks Table (same for screen & print) -->
+      <div class="overflow-hidden rounded-xl border border-gray-200 mb-8">
+        <table class="w-full print-table">
+          <thead class="bg-blue-600 text-white">
+            <tr>
+              <th class="p-4">Subject</th>
+              <th>Max Marks</th>
+              <th>Passing</th>
+              <th>Obtained</th>
+              <th>Percentage</th>
+              <th>Result</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Paper I -->
+            <tr>
+              <td class="p-4">Paper I</td>
+              <td>150</td>
+              <td>60</td>
+              <td id="paper1Marks"></td>
+              <td id="paper1Percent"></td>
+              <td id="paper1Result"></td>
+            </tr>
+            <!-- Paper II -->
+            <tr>
+              <td class="p-4">Paper II</td>
+              <td>150</td>
+              <td>60</td>
+              <td id="paper2Marks"></td>
+              <td id="paper2Percent"></td>
+              <td id="paper2Result"></td>
+            </tr>
+            <!-- Total -->
+            <tr class="total-row">
+              <td class="p-4">Total</td>
+              <td>300</td>
+              <td>120</td>
+              <td id="totalMarks"></td>
+              <td id="totalPercent"></td>
+              <td id="finalResult"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- (e) Print Declaration & Signature -->
+      <div class="result-declaration">
+        <p>This is to certify that <strong><span id="declarationName"></span></strong> has 
+          <strong><span id="declarationResult"></span></strong> in the Sindhudurg Talent Search Examination 2024-25.
+        </p>
+        <div class="signature-line">
+          Authorized Signatory<br>
+          STSE Examination Board
+        </div>
+      </div>
+
+      <!-- (f) Print Notes -->
+      <div class="print-notes">
+        <p>* This is a computer generated document and does not require physical signature.</p>
+        <p>* Grade boundaries and percentage calculations follow STSE regulations.</p>
+      </div>
+
+      <!-- (g) Action Buttons (hidden on print) -->
+      <div class="flex flex-col sm:flex-row justify-center gap-4 no-print">
+        <button 
+          onclick="checkNew()" 
+          class="px-8 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-xl transition-all
+                 flex items-center justify-center gap-2"
+        >
+          <i class="fas fa-rotate-left"></i> New Search
+        </button>
+        <button 
+          onclick="window.print()" 
+          class="px-8 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-all
+                 flex items-center justify-center gap-2"
+        >
+          <i class="fas fa-print"></i> Print Marksheet
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- (3) Scripts -->
+  <script>
+    // Called when user clicks "Search" or presses Enter
+    function fetchData() {
+      const seatNo = document.getElementById('seatNo').value.trim();
+      if (!/^\d+$/.test(seatNo)) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Invalid Input',
+          text: 'Please enter a valid numeric seat number'
+        });
+        return;
+      }
+
+      const loader = Swal.fire({
+        title: 'Fetching Results',
+        html: `
+          <div class="flex flex-col items-center space-y-4">
+            <div class="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
+            <p class="text-gray-600">Searching for seat number: ${seatNo}</p>
+          </div>`,
+        showConfirmButton: false,
+        allowOutsideClick: false
+      });
+
+      google.script.run
+        .withSuccessHandler(data => {
+          loader.close();
+          if (!data) {
+            Swal.fire({
+              icon: 'warning',
+              title: 'Not Found',
+              text: `No records found for seat number: ${seatNo}`
+            });
+            return;
+          }
+          updateData(data);
+        })
+        .withFailureHandler(() => {
+          loader.close();
+          Swal.fire({
+            icon: 'error',
+            title: 'Connection Error',
+            text: 'Failed to connect to server. Please try again.'
+          });
+        })
+        .getStudentData(seatNo);
+    }
+
+    // Populate screen and print elements
+    function updateData(data) {
+      // Screen info
+      document.getElementById('studentName').textContent   = data.studentName;
+      document.getElementById('seatNoDisplay').textContent = data.seatNo;
+      document.getElementById('std').textContent           = data.std;
+      document.getElementById('examDate').textContent      = data.examDate;
+      document.getElementById('school').textContent        = data.school;
+      document.getElementById('center').textContent        = data.center;
+      document.getElementById('district').textContent      = data.district;
+
+      // Print info
+      document.getElementById('printStudentName').textContent = data.studentName;
+      document.getElementById('printSeatNo').textContent      = data.seatNo;
+      document.getElementById('printStd').textContent         = data.std;
+      document.getElementById('printSchool').textContent      = data.school;
+      document.getElementById('printCenter').textContent      = data.center;
+      document.getElementById('printDistrict').textContent    = data.district;
+
+      // Marks calculations
+      const p1 = Number(data.paper1) || 0;
+      const p2 = Number(data.paper2) || 0;
+      const total = p1 + p2;
+      const p1Percent = ((p1 / 150) * 100).toFixed(2);
+      const p2Percent = ((p2 / 150) * 100).toFixed(2);
+      const totalPercent = ((total / 300) * 100).toFixed(2);
+      const finalResult = (total >= 120) ? 'PASSED' : 'FAILED';
+
+      // Update table
+      document.getElementById('paper1Marks').textContent  = p1;
+      document.getElementById('paper1Percent').textContent = p1Percent + '%';
+      document.getElementById('paper1Result').textContent  = (p1 >= 60) ? 'PASS' : 'FAIL';
+
+      document.getElementById('paper2Marks').textContent  = p2;
+      document.getElementById('paper2Percent').textContent = p2Percent + '%';
+      document.getElementById('paper2Result').textContent  = (p2 >= 60) ? 'PASS' : 'FAIL';
+
+      document.getElementById('totalMarks').textContent   = total;
+      document.getElementById('totalPercent').textContent = totalPercent + '%';
+      document.getElementById('finalResult').textContent  = finalResult;
+
+      // Print declaration
+      document.getElementById('declarationName').textContent = data.studentName;
+      document.getElementById('declarationResult').textContent = finalResult;
+
+      // Show the results container
+      document.getElementById('resultContainer').classList.remove('hidden');
+      window.scrollTo({ top: document.getElementById('resultContainer').offsetTop, behavior: 'smooth' });
+    }
+
+    // Reset for a new search
+    function checkNew() {
+      document.getElementById('seatNo').value = '';
+      document.getElementById('resultContainer').classList.add('hidden');
+      document.getElementById('seatNo').focus();
+    }
+
+    // Fetch on "Enter" key
+    document.getElementById('seatNo').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') fetchData();
+    });
+  </script>
+</body>
+</html>
